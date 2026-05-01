@@ -3,6 +3,10 @@ FROM php:8.3-apache
 # Enable MySQL PDO driver
 RUN docker-php-ext-install pdo_mysql
 
+# Ensure only one Apache MPM is enabled.
+RUN a2dismod mpm_event mpm_worker || true \
+	&& a2enmod mpm_prefork
+
 # Use a vhost that serves /public as the document root
 COPY docker/000-default.conf /etc/apache2/sites-available/000-default.conf
 
