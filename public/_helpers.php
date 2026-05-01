@@ -208,9 +208,45 @@ function admin_logout(): void {
     session_destroy();
 }
 
+function render_database_error_page(Throwable $e): void {
+        http_response_code(503);
+        $message = $e->getMessage();
+        ?>
+        <!doctype html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Database Unavailable - <?= h(APP_NAME) ?></title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body class="bg-light">
+            <div class="container py-5" style="max-width: 860px;">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4 p-lg-5">
+                        <h4 class="mb-2">Database unavailable</h4>
+                        <p class="text-muted mb-3">The app could not connect to MySQL. Check the deployment environment variables and database host.</p>
+                        <div class="alert alert-danger mb-3"><?= h($message) ?></div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-primary" href="<?= h(url_for('/setup.php')) ?>">Open Setup</a>
+                            <a class="btn btn-outline-secondary" href="<?= h(url_for('/login.php')) ?>">Go to Login</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+}
+
 function require_admin_login(): void {
-    ensure_session_started();
-    ensure_admin_table(db());
+        try {
+                ensure_session_started();
+                ensure_admin_table(db());
+        } catch (Throwable $e) {
+                render_database_error_page($e);
+        }
 
     if (admin_is_logged_in()) {
         return;
@@ -224,6 +260,10 @@ if (PHP_SAPI !== 'cli') {
     $script = basename((string)($_SERVER['SCRIPT_NAME'] ?? ''));
     $publicScripts = ['login.php', 'setup.php', 'logout.php'];
     if (!in_array($script, $publicScripts, true)) {
-        require_admin_login();
+        try {
+            require_admin_login();
+        } catch (Throwable $e) {
+            render_database_error_page($e);
+        }
     }
 }
